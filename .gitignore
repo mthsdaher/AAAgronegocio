@@ -44,6 +44,12 @@ Thumbs.db
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
-# Replit
+# Local caches
 .cache/
 .local/
+
+# Local assets / briefings (not versioned)
+attached_assets/
+
+# Replit / workflow artifact output (not versioned)
+artifacts/

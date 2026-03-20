@@ -1,0 +1,2174 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 1.0.0
+  description: AAAgronegócio Platform API - Farm Listings Marketplace & SaaS
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication and session management
+  - name: listings
+    description: Farm listing operations
+  - name: media
+    description: Media upload and management
+  - name: analytics
+    description: Analytics and metrics
+  - name: admin
+    description: Admin operations
+  - name: seller
+    description: Seller operations
+  - name: buyer
+    description: Buyer account operations
+  - name: ai
+    description: AI-powered features for premium sellers
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ─── AUTH ───────────────────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout and clear session
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      tags: [auth]
+      summary: Refresh access token
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current authenticated user
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me/profile:
+    put:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update user profile
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  # ─── PUBLIC LISTINGS ─────────────────────────────────────────────────────────
+  /listings:
+    get:
+      operationId: getListings
+      tags: [listings]
+      summary: Get published listings with filters and pagination
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 12
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: country
+          in: query
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+        - name: minArea
+          in: query
+          schema:
+            type: number
+        - name: maxArea
+          in: query
+          schema:
+            type: number
+        - name: propertyType
+          in: query
+          schema:
+            type: string
+        - name: aptitude
+          in: query
+          schema:
+            type: string
+          description: Texto livre; busca em descrição e campos de atividade da propriedade
+        - name: hasWater
+          in: query
+          schema:
+            type: boolean
+        - name: hasIrrigation
+          in: query
+          schema:
+            type: boolean
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [price_asc, price_desc, area_asc, area_desc, newest, featured]
+            default: featured
+        - name: lat
+          in: query
+          schema:
+            type: number
+        - name: lng
+          in: query
+          schema:
+            type: number
+        - name: radius
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Listings list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingsPage"
+
+  /listings/featured:
+    get:
+      operationId: getFeaturedListings
+      tags: [listings]
+      summary: Get featured/premium listings for homepage
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 6
+      responses:
+        "200":
+          description: Featured listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListingSummary"
+
+  /listings/map:
+    get:
+      operationId: getMapListings
+      tags: [listings]
+      summary: Get listings for map view (lat/lng pins only)
+      parameters:
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: country
+          in: query
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+        - name: propertyType
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Map pins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MapPin"
+
+  /listings/{slug}:
+    get:
+      operationId: getListingBySlug
+      tags: [listings]
+      summary: Get full listing details by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Listing details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /listings/{slug}/view:
+    post:
+      operationId: trackListingView
+      tags: [listings]
+      summary: Track a listing view
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrackViewRequest"
+      responses:
+        "200":
+          description: View tracked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /listings/{slug}/interest:
+    post:
+      operationId: submitInterest
+      tags: [listings]
+      summary: Submit buyer interest (generates WhatsApp/email redirect)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InterestRequest"
+      responses:
+        "200":
+          description: Interest recorded and contact info returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterestResponse"
+
+  # ─── SELLER LISTINGS ──────────────────────────────────────────────────────────
+  /seller/listings:
+    get:
+      operationId: getSellerListings
+      tags: [seller]
+      summary: Get seller's own listings
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Seller's listings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingsPage"
+    post:
+      operationId: createListing
+      tags: [seller]
+      summary: Create a new listing (draft)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateListingRequest"
+      responses:
+        "201":
+          description: Listing created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDetail"
+
+  /seller/listings/{id}:
+    get:
+      operationId: getSellerListing
+      tags: [seller]
+      summary: Get seller's listing by ID
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Listing detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDetail"
+    put:
+      operationId: updateListing
+      tags: [seller]
+      summary: Update a listing
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateListingRequest"
+      responses:
+        "200":
+          description: Listing updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDetail"
+    delete:
+      operationId: deleteListing
+      tags: [seller]
+      summary: Delete a listing
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /seller/listings/{id}/submit:
+    post:
+      operationId: submitListingForReview
+      tags: [seller]
+      summary: Submit listing for admin review
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDetail"
+
+  /seller/listings/{id}/analytics:
+    get:
+      operationId: getListingAnalytics
+      tags: [seller]
+      summary: Get analytics for a specific listing
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y]
+            default: 30d
+      responses:
+        "200":
+          description: Listing analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingAnalytics"
+
+  /seller/dashboard:
+    get:
+      operationId: getSellerDashboard
+      tags: [seller]
+      summary: Get seller dashboard summary
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Seller dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SellerDashboard"
+
+  # ─── MEDIA ────────────────────────────────────────────────────────────────────
+  /media/upload:
+    post:
+      operationId: uploadMedia
+      tags: [media]
+      summary: Upload media file (image, video, PDF)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                listingId:
+                  type: string
+                mediaType:
+                  type: string
+                  enum: [image, video, pdf]
+              required:
+                - file
+                - listingId
+                - mediaType
+      responses:
+        "201":
+          description: Media uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaItem"
+
+  /media/{id}:
+    delete:
+      operationId: deleteMedia
+      tags: [media]
+      summary: Delete a media item
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ─── BUYER ───────────────────────────────────────────────────────────────────
+  /buyer/favorites:
+    get:
+      operationId: getFavorites
+      tags: [buyer]
+      summary: Get buyer's saved favorites
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Favorite listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListingSummary"
+
+  /buyer/favorites/{listingId}:
+    post:
+      operationId: addFavorite
+      tags: [buyer]
+      summary: Add listing to favorites
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Added to favorites
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+    delete:
+      operationId: removeFavorite
+      tags: [buyer]
+      summary: Remove listing from favorites
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Removed from favorites
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /buyer/interests:
+    get:
+      operationId: getBuyerInterests
+      tags: [buyer]
+      summary: Get buyer's interest history
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Interest history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InterestRecord"
+
+  # ─── ADMIN ───────────────────────────────────────────────────────────────────
+  /admin/listings:
+    get:
+      operationId: adminGetListings
+      tags: [admin]
+      summary: Get all listings (admin view)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: moderationStatus
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: All listings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminListingsPage"
+
+  /admin/listings/{id}/approve:
+    post:
+      operationId: approveListing
+      tags: [admin]
+      summary: Approve a listing for publication
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDetail"
+
+  /admin/listings/{id}/reject:
+    post:
+      operationId: rejectListing
+      tags: [admin]
+      summary: Reject a listing with reason
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectListingRequest"
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDetail"
+
+  /admin/listings/{id}/feature:
+    post:
+      operationId: featureListing
+      tags: [admin]
+      summary: Toggle featured status on a listing
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                featured:
+                  type: boolean
+              required:
+                - featured
+      responses:
+        "200":
+          description: Feature status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDetail"
+
+  /admin/users:
+    get:
+      operationId: adminGetUsers
+      tags: [admin]
+      summary: Get all users
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: role
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsersPage"
+
+  /admin/users/{id}:
+    put:
+      operationId: adminUpdateUser
+      tags: [admin]
+      summary: Update user (role, status, premium)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUpdateUserRequest"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /admin/dashboard:
+    get:
+      operationId: getAdminDashboard
+      tags: [admin]
+      summary: Get admin dashboard summary
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Admin dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDashboard"
+
+  /admin/analytics:
+    get:
+      operationId: getAdminAnalytics
+      tags: [admin]
+      summary: Get platform-wide analytics
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y]
+            default: 30d
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformAnalytics"
+
+  # ─── AI FEATURES ──────────────────────────────────────────────────────────────
+  /ai/generate-description:
+    post:
+      operationId: aiGenerateDescription
+      tags: [ai]
+      summary: Generate listing description from structured data
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiDescriptionRequest"
+      responses:
+        "200":
+          description: Generated description
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiTextResponse"
+
+  /ai/improve-title:
+    post:
+      operationId: aiImproveTitle
+      tags: [ai]
+      summary: Improve listing title using AI
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiTitleRequest"
+      responses:
+        "200":
+          description: Improved title suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiTitleResponse"
+
+  /ai/suggest-price:
+    post:
+      operationId: aiSuggestPrice
+      tags: [ai]
+      summary: Suggest price based on comparable listings
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiPriceRequest"
+      responses:
+        "200":
+          description: Price suggestion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiPriceResponse"
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+
+  schemas:
+    # ─── CORE ───────────────────────────────────────────────────────────────────
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+      required:
+        - error
+
+    # ─── AUTH ───────────────────────────────────────────────────────────────────
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [buyer, seller]
+          default: buyer
+        phone:
+          type: string
+      required:
+        - name
+        - email
+        - password
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserProfile"
+        message:
+          type: string
+      required:
+        - user
+        - message
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, seller, buyer]
+        phone:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        isPremium:
+          type: boolean
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - role
+        - isPremium
+        - isActive
+        - createdAt
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        avatarUrl:
+          type: string
+
+    # ─── LISTINGS ────────────────────────────────────────────────────────────────
+    ListingSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        price:
+          type: number
+          nullable: true
+        negotiable:
+          type: boolean
+        totalArea:
+          type: number
+          nullable: true
+        areaUnit:
+          type: string
+          nullable: true
+        pricePerHectare:
+          type: number
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        propertyType:
+          type: string
+          nullable: true
+        isFeatured:
+          type: boolean
+        isPremium:
+          type: boolean
+        coverImageUrl:
+          type: string
+          nullable: true
+        thumbnailUrls:
+          type: array
+          items:
+            type: string
+        viewCount:
+          type: integer
+        favoriteCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - slug
+        - title
+        - negotiable
+        - isFeatured
+        - isPremium
+        - thumbnailUrls
+        - viewCount
+        - favoriteCount
+        - createdAt
+
+    ListingDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+          nullable: true
+        negotiable:
+          type: boolean
+        status:
+          type: string
+          enum: [draft, pending_review, published, rejected, archived]
+        moderationStatus:
+          type: string
+          enum: [pending, approved, rejected]
+        moderationNote:
+          type: string
+          nullable: true
+        isFeatured:
+          type: boolean
+        isPremium:
+          type: boolean
+
+        country:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        region:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        addressDetails:
+          type: string
+          nullable: true
+
+        totalArea:
+          type: number
+          nullable: true
+        productiveArea:
+          type: number
+          nullable: true
+        reserveArea:
+          type: number
+          nullable: true
+        areaUnit:
+          type: string
+          enum: [hectares, alqueires, acres]
+          nullable: true
+        pricePerHectare:
+          type: number
+          nullable: true
+        pricePerAlqueire:
+          type: number
+          nullable: true
+
+        propertyType:
+          type: string
+          nullable: true
+        aptidaoAgricola:
+          type: boolean
+        aptidaoPecuaria:
+          type: boolean
+        aptidaoMista:
+          type: boolean
+        hasIrrigation:
+          type: boolean
+        hasRiver:
+          type: boolean
+        hasLake:
+          type: boolean
+        hasAcude:
+          type: boolean
+        hasWell:
+          type: boolean
+        hasSpring:
+          type: boolean
+
+        infraMainHouse:
+          type: boolean
+        infraWorkerHouses:
+          type: boolean
+        infraWarehouse:
+          type: boolean
+        infraBarn:
+          type: boolean
+        infraCorral:
+          type: boolean
+        infraFencing:
+          type: boolean
+        infraElectricity:
+          type: boolean
+        infraInternet:
+          type: boolean
+        infraMachineryShed:
+          type: boolean
+        infraGrainSilo:
+          type: boolean
+        infraDairyStructure:
+          type: boolean
+        infraIrrigationSystem:
+          type: boolean
+        infraPavedAccess:
+          type: boolean
+        infraInternalRoads:
+          type: boolean
+        infraAirstrip:
+          type: boolean
+        infraOffice:
+          type: boolean
+        infraSolarPower:
+          type: boolean
+        infraSecuritySystem:
+          type: boolean
+
+        hasCattle:
+          type: boolean
+        cattleCount:
+          type: integer
+          nullable: true
+        hasHorses:
+          type: boolean
+        otherAnimals:
+          type: string
+          nullable: true
+        plantedCrops:
+          type: string
+          nullable: true
+        cropDetails:
+          type: string
+          nullable: true
+        productiveActivities:
+          type: string
+          nullable: true
+
+        bedroomCount:
+          type: integer
+          nullable: true
+        bathroomCount:
+          type: integer
+          nullable: true
+        suiteCount:
+          type: integer
+          nullable: true
+        hasKitchen:
+          type: boolean
+        hasGarage:
+          type: boolean
+        hasLeisureArea:
+          type: boolean
+
+        deedStatus:
+          type: string
+          nullable: true
+        environmentalLicense:
+          type: boolean
+        carRegistryInfo:
+          type: string
+          nullable: true
+
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/MediaItem"
+
+        seller:
+          $ref: "#/components/schemas/SellerPublicInfo"
+
+        viewCount:
+          type: integer
+        favoriteCount:
+          type: integer
+        interestCount:
+          type: integer
+
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - slug
+        - title
+        - negotiable
+        - status
+        - moderationStatus
+        - isFeatured
+        - isPremium
+        - aptidaoAgricola
+        - aptidaoPecuaria
+        - aptidaoMista
+        - hasIrrigation
+        - hasRiver
+        - hasLake
+        - hasAcude
+        - hasWell
+        - hasSpring
+        - infraMainHouse
+        - infraWorkerHouses
+        - infraWarehouse
+        - infraBarn
+        - infraCorral
+        - infraFencing
+        - infraElectricity
+        - infraInternet
+        - infraMachineryShed
+        - infraGrainSilo
+        - infraDairyStructure
+        - infraIrrigationSystem
+        - infraPavedAccess
+        - infraInternalRoads
+        - infraAirstrip
+        - infraOffice
+        - infraSolarPower
+        - infraSecuritySystem
+        - hasCattle
+        - hasHorses
+        - hasKitchen
+        - hasGarage
+        - hasLeisureArea
+        - environmentalLicense
+        - media
+        - viewCount
+        - favoriteCount
+        - interestCount
+        - createdAt
+        - updatedAt
+
+    CreateListingRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 5
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+          nullable: true
+        negotiable:
+          type: boolean
+          default: true
+        country:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        region:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        addressDetails:
+          type: string
+          nullable: true
+        totalArea:
+          type: number
+          nullable: true
+        productiveArea:
+          type: number
+          nullable: true
+        reserveArea:
+          type: number
+          nullable: true
+        areaUnit:
+          type: string
+          enum: [hectares, alqueires, acres]
+          nullable: true
+        propertyType:
+          type: string
+          nullable: true
+        aptidaoAgricola:
+          type: boolean
+          default: false
+        aptidaoPecuaria:
+          type: boolean
+          default: false
+        aptidaoMista:
+          type: boolean
+          default: false
+        hasIrrigation:
+          type: boolean
+          default: false
+        hasRiver:
+          type: boolean
+          default: false
+        hasLake:
+          type: boolean
+          default: false
+        hasAcude:
+          type: boolean
+          default: false
+        hasWell:
+          type: boolean
+          default: false
+        hasSpring:
+          type: boolean
+          default: false
+        infraMainHouse:
+          type: boolean
+          default: false
+        infraWorkerHouses:
+          type: boolean
+          default: false
+        infraWarehouse:
+          type: boolean
+          default: false
+        infraBarn:
+          type: boolean
+          default: false
+        infraCorral:
+          type: boolean
+          default: false
+        infraFencing:
+          type: boolean
+          default: false
+        infraElectricity:
+          type: boolean
+          default: false
+        infraInternet:
+          type: boolean
+          default: false
+        infraMachineryShed:
+          type: boolean
+          default: false
+        infraGrainSilo:
+          type: boolean
+          default: false
+        infraDairyStructure:
+          type: boolean
+          default: false
+        infraIrrigationSystem:
+          type: boolean
+          default: false
+        infraPavedAccess:
+          type: boolean
+          default: false
+        infraInternalRoads:
+          type: boolean
+          default: false
+        infraAirstrip:
+          type: boolean
+          default: false
+        infraOffice:
+          type: boolean
+          default: false
+        infraSolarPower:
+          type: boolean
+          default: false
+        infraSecuritySystem:
+          type: boolean
+          default: false
+        hasCattle:
+          type: boolean
+          default: false
+        cattleCount:
+          type: integer
+          nullable: true
+        hasHorses:
+          type: boolean
+          default: false
+        otherAnimals:
+          type: string
+          nullable: true
+        plantedCrops:
+          type: string
+          nullable: true
+        cropDetails:
+          type: string
+          nullable: true
+        productiveActivities:
+          type: string
+          nullable: true
+        bedroomCount:
+          type: integer
+          nullable: true
+        bathroomCount:
+          type: integer
+          nullable: true
+        suiteCount:
+          type: integer
+          nullable: true
+        hasKitchen:
+          type: boolean
+          default: false
+        hasGarage:
+          type: boolean
+          default: false
+        hasLeisureArea:
+          type: boolean
+          default: false
+        deedStatus:
+          type: string
+          nullable: true
+        environmentalLicense:
+          type: boolean
+          default: false
+        carRegistryInfo:
+          type: string
+          nullable: true
+      required:
+        - title
+
+    UpdateListingRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateListingRequest"
+
+    ListingsPage:
+      type: object
+      properties:
+        listings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListingSummary"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - listings
+        - total
+        - page
+        - limit
+        - totalPages
+
+    MapPin:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        price:
+          type: number
+          nullable: true
+        totalArea:
+          type: number
+          nullable: true
+        areaUnit:
+          type: string
+          nullable: true
+        isFeatured:
+          type: boolean
+        propertyType:
+          type: string
+          nullable: true
+      required:
+        - id
+        - slug
+        - title
+        - latitude
+        - longitude
+        - isFeatured
+
+    TrackViewRequest:
+      type: object
+      properties:
+        source:
+          type: string
+          nullable: true
+        referrer:
+          type: string
+          nullable: true
+        deviceType:
+          type: string
+          nullable: true
+
+    InterestRequest:
+      type: object
+      properties:
+        interestType:
+          type: string
+          enum: [info, proposal, visit]
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+      required:
+        - interestType
+
+    InterestResponse:
+      type: object
+      properties:
+        whatsappUrl:
+          type: string
+          nullable: true
+        emailUrl:
+          type: string
+          nullable: true
+        message:
+          type: string
+      required:
+        - message
+
+    InterestRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        interestType:
+          type: string
+        listingId:
+          type: string
+        listing:
+          $ref: "#/components/schemas/ListingSummary"
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - interestType
+        - listingId
+        - createdAt
+
+    MediaItem:
+      type: object
+      properties:
+        id:
+          type: string
+        listingId:
+          type: string
+        url:
+          type: string
+        mediaType:
+          type: string
+          enum: [image, video, pdf]
+        isPrimary:
+          type: boolean
+        sortOrder:
+          type: integer
+        fileName:
+          type: string
+          nullable: true
+        fileSize:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - listingId
+        - url
+        - mediaType
+        - isPrimary
+        - sortOrder
+        - createdAt
+
+    SellerPublicInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        isPremium:
+          type: boolean
+      required:
+        - id
+        - name
+        - isPremium
+
+    # ─── ANALYTICS ───────────────────────────────────────────────────────────────
+    ListingAnalytics:
+      type: object
+      properties:
+        listingId:
+          type: string
+        period:
+          type: string
+        totalViews:
+          type: integer
+        uniqueViews:
+          type: integer
+        favoriteCount:
+          type: integer
+        interestCount:
+          type: integer
+        conversionRate:
+          type: number
+        viewsByDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayMetric"
+        viewsBySource:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceMetric"
+        interestByType:
+          type: array
+          items:
+            $ref: "#/components/schemas/InterestTypeMetric"
+      required:
+        - listingId
+        - period
+        - totalViews
+        - uniqueViews
+        - favoriteCount
+        - interestCount
+        - conversionRate
+        - viewsByDay
+        - viewsBySource
+        - interestByType
+
+    DayMetric:
+      type: object
+      properties:
+        date:
+          type: string
+        count:
+          type: integer
+      required:
+        - date
+        - count
+
+    SourceMetric:
+      type: object
+      properties:
+        source:
+          type: string
+        count:
+          type: integer
+        percentage:
+          type: number
+      required:
+        - source
+        - count
+        - percentage
+
+    InterestTypeMetric:
+      type: object
+      properties:
+        type:
+          type: string
+        count:
+          type: integer
+      required:
+        - type
+        - count
+
+    SellerDashboard:
+      type: object
+      properties:
+        totalListings:
+          type: integer
+        publishedListings:
+          type: integer
+        pendingListings:
+          type: integer
+        draftListings:
+          type: integer
+        totalViews:
+          type: integer
+        totalFavorites:
+          type: integer
+        totalInterests:
+          type: integer
+        recentListings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListingSummary"
+        viewsByDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayMetric"
+      required:
+        - totalListings
+        - publishedListings
+        - pendingListings
+        - draftListings
+        - totalViews
+        - totalFavorites
+        - totalInterests
+        - recentListings
+        - viewsByDay
+
+    AdminDashboard:
+      type: object
+      properties:
+        totalListings:
+          type: integer
+        pendingApproval:
+          type: integer
+        publishedListings:
+          type: integer
+        totalUsers:
+          type: integer
+        totalSellers:
+          type: integer
+        totalBuyers:
+          type: integer
+        premiumSellers:
+          type: integer
+        totalViews:
+          type: integer
+        totalInterests:
+          type: integer
+        recentListings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListingSummary"
+        listingsByStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusMetric"
+        viewsByDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayMetric"
+      required:
+        - totalListings
+        - pendingApproval
+        - publishedListings
+        - totalUsers
+        - totalSellers
+        - totalBuyers
+        - premiumSellers
+        - totalViews
+        - totalInterests
+        - recentListings
+        - listingsByStatus
+        - viewsByDay
+
+    StatusMetric:
+      type: object
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+      required:
+        - status
+        - count
+
+    PlatformAnalytics:
+      type: object
+      properties:
+        period:
+          type: string
+        totalViews:
+          type: integer
+        uniqueVisitors:
+          type: integer
+        totalInterests:
+          type: integer
+        conversionRate:
+          type: number
+        avgPriceByState:
+          type: array
+          items:
+            $ref: "#/components/schemas/StateMetric"
+        viewsByDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayMetric"
+        topListings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListingSummary"
+        interestsByType:
+          type: array
+          items:
+            $ref: "#/components/schemas/InterestTypeMetric"
+      required:
+        - period
+        - totalViews
+        - uniqueVisitors
+        - totalInterests
+        - conversionRate
+        - avgPriceByState
+        - viewsByDay
+        - topListings
+        - interestsByType
+
+    StateMetric:
+      type: object
+      properties:
+        state:
+          type: string
+        avgPrice:
+          type: number
+        listingCount:
+          type: integer
+      required:
+        - state
+        - avgPrice
+        - listingCount
+
+    AdminListingsPage:
+      type: object
+      properties:
+        listings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListingDetail"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - listings
+        - total
+        - page
+        - limit
+        - totalPages
+
+    UsersPage:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserProfile"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - users
+        - total
+        - page
+        - limit
+        - totalPages
+
+    AdminUpdateUserRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [admin, seller, buyer]
+        isPremium:
+          type: boolean
+        isActive:
+          type: boolean
+
+    RejectListingRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 5
+      required:
+        - reason
+
+    # ─── AI ──────────────────────────────────────────────────────────────────────
+    AiDescriptionRequest:
+      type: object
+      properties:
+        listingId:
+          type: string
+        farmData:
+          type: object
+          additionalProperties: true
+      required:
+        - listingId
+        - farmData
+
+    AiTitleRequest:
+      type: object
+      properties:
+        listingId:
+          type: string
+        currentTitle:
+          type: string
+        farmData:
+          type: object
+          additionalProperties: true
+      required:
+        - listingId
+        - currentTitle
+        - farmData
+
+    AiPriceRequest:
+      type: object
+      properties:
+        listingId:
+          type: string
+        state:
+          type: string
+        totalArea:
+          type: number
+        areaUnit:
+          type: string
+        propertyType:
+          type: string
+          nullable: true
+      required:
+        - listingId
+        - state
+        - totalArea
+        - areaUnit
+
+    AiTextResponse:
+      type: object
+      properties:
+        text:
+          type: string
+        message:
+          type: string
+      required:
+        - text
+        - message
+
+    AiTitleResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            type: string
+        message:
+          type: string
+      required:
+        - suggestions
+        - message
+
+    AiPriceResponse:
+      type: object
+      properties:
+        suggestedMinPrice:
+          type: number
+        suggestedMaxPrice:
+          type: number
+        suggestedPrice:
+          type: number
+        pricePerHectare:
+          type: number
+        comparableCount:
+          type: integer
+        message:
+          type: string
+      required:
+        - suggestedMinPrice
+        - suggestedMaxPrice
+        - suggestedPrice
+        - pricePerHectare
+        - comparableCount
+        - message
