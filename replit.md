@@ -1,8 +1,8 @@
-# Workspace
+# AAAgronegócio
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+Production-grade SaaS + marketplace platform for farm listings in Brazil. Built with Express API backend and React+Vite frontend in a pnpm monorepo.
 
 ## Stack
 
@@ -10,87 +10,117 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Node.js version**: 24
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
-- **API framework**: Express 5
+- **Frontend**: React + Vite + TypeScript + Tailwind CSS + shadcn/ui + TanStack Query + wouter
+- **Backend**: Express 5 + TypeScript
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
+- **Auth**: JWT via httpOnly cookies (access token + refresh token)
 - **Build**: esbuild (CJS bundle)
 
 ## Structure
 
 ```text
-artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
-├── lib/                    # Shared libraries
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+/
+├── artifacts/
+│   ├── aaagronegocio/     # React+Vite frontend (previewPath: /)
+│   └── api-server/        # Express API server (previewPath: /api)
+├── lib/
+│   ├── api-spec/          # OpenAPI spec + Orval codegen config
+│   ├── api-client-react/  # Generated React Query hooks
+│   ├── api-zod/           # Generated Zod schemas
+│   └── db/                # Drizzle schema + DB connection
+├── scripts/               # Utility scripts
+└── pnpm-workspace.yaml
 ```
 
-## TypeScript & Composite Projects
+## Database Schema
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
+- **users** — admin, seller, buyer roles; isPremium flag; JWT refresh token storage
+- **listings** — comprehensive farm listing schema (100+ fields): location, area, infrastructure checkboxes, water resources, livestock, house details, documents, moderation workflow
+- **media** — images, videos, PDFs linked to listings
+- **listing_views** — analytics events for view tracking
+- **interests** — buyer interest actions (info, proposal, visit)
+- **favorites** — buyer saved listings
 
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+## API Routes
 
-## Root Scripts
+All routes under `/api`:
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
-- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
+- `GET /healthz` — health check
+- `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh` — JWT auth
+- `GET /auth/me`, `PUT /auth/me/profile` — user profile
+- `GET /listings` — public search with filters/pagination
+- `GET /listings/featured` — premium featured listings
+- `GET /listings/map` — map pins (lat/lng)
+- `GET /listings/:slug` — listing detail
+- `POST /listings/:slug/view` — track view analytics
+- `POST /listings/:slug/interest` — record buyer interest + get WhatsApp/email URLs
+- `GET /seller/dashboard` — seller stats
+- `GET/POST /seller/listings` — seller listing CRUD
+- `GET/PUT/DELETE /seller/listings/:id` — listing management
+- `POST /seller/listings/:id/submit` — submit for admin review
+- `GET /seller/listings/:id/analytics` — listing analytics
+- `GET /admin/dashboard` — admin overview
+- `GET /admin/listings` — all listings with filters
+- `POST /admin/listings/:id/approve` — approve listing
+- `POST /admin/listings/:id/reject` — reject with reason
+- `POST /admin/listings/:id/feature` — toggle featured
+- `GET/PUT /admin/users` — user management
+- `GET /admin/analytics` — platform analytics
+- `GET /buyer/favorites`, `POST/DELETE /buyer/favorites/:id` — saved listings
+- `GET /buyer/interests` — interest history
+- `POST /ai/generate-description` — AI listing description (OpenAI GPT-4o-mini)
+- `POST /ai/improve-title` — AI title suggestions
+- `POST /ai/suggest-price` — price suggestion from comparables
 
-## Packages
+## Frontend Pages
 
-### `artifacts/api-server` (`@workspace/api-server`)
+Public marketplace:
+- `/` — Homepage with hero, search, featured listings, stats
+- `/imoveis` — Search listings with sidebar filters, pagination, sort
+- `/imoveis/mapa` — Map view (Google Maps placeholder)
+- `/imoveis/:slug` — Farm detail with gallery, WhatsApp/email CTAs
+- `/entrar` — Login
+- `/cadastrar` — Register (buyer or seller role)
+- `/minha-conta` — Buyer account (favorites, interests)
 
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
+Seller SaaS:
+- `/painel/dashboard` — Stats overview
+- `/painel/anuncios` — Own listings table
+- `/painel/anuncios/novo` — Create listing form
+- `/painel/anuncios/:id` — Edit listing
+- `/painel/anuncios/:id/analytics` — Listing analytics
+- `/painel/ia` — AI tools
 
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
+Admin SaaS:
+- `/admin/dashboard` — Platform KPIs
+- `/admin/anuncios` — Moderation queue
+- `/admin/usuarios` — User management
+- `/admin/analytics` — Platform analytics
 
-### `lib/db` (`@workspace/db`)
+## Business Logic
 
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
+- Listings require admin approval before publication
+- Premium sellers get featured placement, more media, AI tools
+- Buyer interest generates WhatsApp redirect with predefined messages
+- Analytics tracked per listing (views, source, interest type)
+- JWT auth with 15-min access token + 7-day refresh token in httpOnly cookies
 
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
+## Seed Credentials
 
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
+All seed accounts use password: `Admin@123`
 
-### `lib/api-spec` (`@workspace/api-spec`)
+- Admin: `admin@aaagronegocio.com.br`
+- Seller (premium): `joao@fazendas.com.br`
+- Seller (standard): `maria@agrofazenda.com.br`
+- Buyer: `carlos@comprador.com.br`
 
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
+## Environment Variables
 
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
-
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
-
-### `lib/api-zod` (`@workspace/api-zod`)
-
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
-
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
-
-### `scripts` (`@workspace/scripts`)
-
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+- `DATABASE_URL` — PostgreSQL connection (auto-provided by Replit)
+- `JWT_SECRET` — Access token secret
+- `JWT_REFRESH_SECRET` — Refresh token secret
+- `WHATSAPP_NUMBER` — Platform WhatsApp number for buyer redirects
+- `BROKER_EMAIL` — Platform email for buyer redirects
+- `OPENAI_API_KEY` — For AI features (generate-description, improve-title, suggest-price)

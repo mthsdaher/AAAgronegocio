@@ -1,0 +1,28 @@
+packages:
+  "framer-motion": "For page transitions, scroll animations, and premium micro-interactions"
+  "recharts": "For seller and admin analytics dashboards"
+  "react-hook-form": "For complex, multi-step property listing forms"
+  "@hookform/resolvers": "For Zod validation integration with react-hook-form"
+  "date-fns": "For localized date formatting (pt-BR)"
+  "clsx": "For classname merging in UI components"
+  "tailwind-merge": "For classname merging with Tailwind v4"
+  "@radix-ui/react-slot": "For component slotting in UI library"
+
+images:
+  - path: "artifacts/aaagronegocio/public/images/hero-farm.png"
+    description: "Breathtaking aerial drone view of a lush green Brazilian farm at golden hour, rolling hills, modern agricultural landscape, ultra realistic, cinematic lighting, 8k resolution, premium real estate aesthetic"
+    aspect_ratio: "16:9"
+  - path: "artifacts/aaagronegocio/public/images/logo-icon.png"
+    description: "Minimalist sophisticated logo mark for an agribusiness premium real estate company, using a geometric 'A' shape resembling a farm roof or mountain, deep forest green and gold colors, transparent background, corporate SaaS aesthetic"
+    aspect_ratio: "1:1"
+  - path: "artifacts/aaagronegocio/public/images/pattern.png"
+    description: "Subtle topographic map contour lines pattern, extremely low opacity on dark green background, premium corporate texture for dashboard sidebars and hero overlays"
+    aspect_ratio: "16:9"
+  - path: "artifacts/aaagronegocio/public/images/farm-placeholder.png"
+    description: "Beautiful modern farmhouse surrounded by green pastures and wooden fences, sunny day, architectural photography, high-end rural property"
+    aspect_ratio: "4:3"
+
+notes:
+  - Using wouter for routing.
+  - Using generated API hooks from @workspace/api-client-react.
+  - UI language is strictly pt-BR.
